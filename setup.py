@@ -1,13 +1,15 @@
 from setuptools import setup, find_packages
 
+
 def read_requirements(file_path):
     # read requirements from file
     # args: file_path (str): path to requirements file
     # returns: list of requirement names
     with open(file_path) as f:
         requirements = f.read().splitlines()
-        print("pprobe install_requires:", requirements)
+        print("codet install_requires:", requirements)
         return requirements
+
 
 setup(
     name="codet",
