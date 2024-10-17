@@ -1,3 +1,4 @@
 colorama==0.4.6
 gitpython==3.1.43
 openai==1.43.0
+jiter==0.6.1

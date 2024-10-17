@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from collections import Counter
 from colorama import Fore, Style, init
 import argparse
+import csv
 
 
 HELLO_CODET = r"""
@@ -73,6 +74,77 @@ class GitAnalyzer:
                 print(f"{Fore.BLUE}Commit Summary: {commit_summary:<50} (Commit ID: {commit_hexsha}){Style.RESET_ALL}")
 
 
+                # this section gathers the diffs of the commit and checks for a keyword in the diffs.
+                diffs_txt = ""
+                for diff in commit_diffs:
+                    diffs_txt += f"COMMIT MESSAGE: {commit_message}"
+                    diffs_txt += f"COMMIT MODIFIED FILE NAME: {diff.a_path}"
+                    modified_content = diff.diff.decode('utf-8') if diff.diff else 'NO CHANGES'
+                    diffs_txt += f"COMMIT MODIFIED CONTENT: {modified_content}"
+
+                ###########################
+                ###   commit records   ####
+                ###########################
+                # # Check if a keyword is provided for searching in the diffs
+                if self.keyword and self.keyword in diffs_txt:
+                    print(f"{Fore.RED} keyword '{self.keyword}' found in diff: {self.keyword}{Style.RESET_ALL}")
+                    self.commit_records[commit_hexsha] = {
+                        'commit_message': commit_message,
+                        'commit_date': commit_date,
+                        'commit_email': commit_email,
+                        'commit_diffs': diffs_txt.strip(),
+                    }
+                elif not self.keyword:
+                    self.commit_records[commit_hexsha] = {
+                        'commit_message': commit_message,
+                        'commit_date': commit_date,
+                        'commit_email': commit_email,
+                        'commit_diffs': diffs_txt.strip(),
+                    }
+
+
+
+                #######################################
+                ###  Integrate LLM AI for analysis ####
+                #######################################
+                import os
+                from openai import OpenAI
+
+
+                # Create OpenAI client
+                client = OpenAI(
+                    base_url="https://integrate.api.nvidia.com/v1",
+                    api_key=os.environ['NVIDIA_API_KEY']
+                )
+
+                import time
+
+                start_time = time.time()  # Record start time
+                preliminary_prompt = "where is a bunch of git diff.you are the absolute expert of the entire project. Please help me analyze it:"
+                diff = str(self.commit_records)
+                full_prompt = preliminary_prompt + diff
+
+                print("Analyzing commit records...")  # Print prompt message
+                completion = client.chat.completions.create(
+                    model="meta/llama-3.1-405b-instruct",
+                    messages=[{"role": "user", "content": full_prompt}],
+                    temperature=0.5,
+                    top_p=0.7,
+                    max_tokens=1024,
+                    stream=True
+                )
+
+                reply = f"Hello "
+                for chunk in completion:
+                    if chunk.choices[0].delta.content is not None:
+                        reply += chunk.choices[0].delta.content
+                
+                print(reply)
+                end_time = time.time()  # Record end time
+                print(f"Analysis completed, took {end_time - start_time:.2f} seconds")  # Print elapsed time
+                ###########################
+                ###  debug && dump csv ####
+                ###########################
                 if self.debug:
                     print("---------------------------------------->")
                     print(f"COMMIT ID: {commit_hexsha}")
@@ -90,32 +162,24 @@ class GitAnalyzer:
                         print(f"COMMIT MODIFIED FILE NAME: {diff.a_path}")
                         print(f"COMMIT MODIFIED CONTENT: {modified_content}")
                         print("----------------------------------------<")
-                else:
-                    # this section gathers the diffs of the commit and checks for a keyword in the diffs.
-                    diffs_txt = ""
-                    for diff in commit_diffs:
-                        diffs_txt += f"COMMIT MESSAGE: {commit_message}"
-                        diffs_txt += f"COMMIT MODIFIED FILE NAME: {diff.a_path}"
-                        modified_content = diff.diff.decode('utf-8') if diff.diff else 'NO CHANGES'
-                        diffs_txt += f"COMMIT MODIFIED CONTENT: {modified_content}"
-    
-                    # # Check if a keyword is provided for searching in the diffs
-                    if self.keyword and self.keyword in diffs_txt:
-                        print(f"{Fore.RED} keyword '{self.keyword}' found in diff: {self.keyword}{Style.RESET_ALL}")
-                        self.commit_records[commit_hexsha] = {
-                            'commit_message': commit_message,
-                            'commit_date': commit_date,
-                            'commit_email': commit_email,
-                            'commit_diffs': diffs_txt.strip(),
-                        }
-                    elif not self.keyword:
-                        self.commit_records[commit_hexsha] = {
-                            'commit_message': commit_message,
-                            'commit_date': commit_date,
-                            'commit_email': commit_email,
-                            'commit_diffs': diffs_txt.strip(),
-                        }
-                
+                    
+                    # Attempting to write commit records to a CSV file named 'commit_records.csv'
+                    try:
+                        print("Attempting to write commit records to 'commit_records.csv'...")
+                        with open('commit_records.csv', mode='w', newline='', encoding='utf-8') as csvfile:
+                            writer = csv.writer(csvfile)
+                            # Iterating through each commit record to write to the CSV
+                            for commit_id, record in self.commit_records.items():
+                                writer.writerow([commit_id, record])
+                        print("Successfully wrote commit records to 'commit_records.csv'.")
+                    except Exception as e:
+                        # Handling any exceptions that occur during the file writing process
+                        print(f"An error occurred while writing to 'commit_records.csv': {e}")
+
+            
+            ###########################
+            ###  hotspot analysis  ####
+            ###########################
             # Get the diffs without creating a patch
             diffs = commit.diff(parent_commit, create_patch=False)
             for diff_item in diffs:
