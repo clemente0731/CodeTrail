@@ -56,7 +56,7 @@ class GitAnalyzer:
                 commit_diff_files = [diff.a_path for diff in commit_diffs]
 
                 print(
-                    f"{Fore.BLUE}Commit Summary: {commit_summary:<50} (Commit ID: {commit_hexsha}){Style.RESET_ALL}"
+                    f"{Fore.BLUE}Commit Summary: {commit_summary:<100} (Commit ID: {commit_hexsha}){Style.RESET_ALL}"
                 )
 
                 # this section gathers the diffs of the commit and checks for a keyword in the diffs.
@@ -145,54 +145,6 @@ class GitAnalyzer:
                     self.changed_files.append(
                         diff_item.a_path
                     )  # Count changed files for hotspot analysis
-
-            #######################################
-            ###  Integrate LLM AI for analysis ####
-            #######################################
-            import os
-            from openai import OpenAI
-
-            # Create OpenAI client
-            client = OpenAI(
-                base_url="https://integrate.api.nvidia.com/v1",
-                api_key=os.environ["NVIDIA_API_KEY"],
-            )
-
-            import time
-
-            start_time = time.time()  # Record start time
-            preliminary_prompt = "where is a bunch of git diff.you are the absolute expert of the entire project. Please help me analyze it:"
-            # Convert commit_records dictionary to a list of key-value pairs for analysis
-            commit_records_items = self.commit_records.items()
-            full_reply = "Hello "
-
-            # Analyze each key-value pair separately
-            for commit_id, record in commit_records_items:
-                # Create a prompt for each commit record
-                diff_prompt = f"{preliminary_prompt} Commit ID: {str(commit_id)}, Record: {str(record)}"
-
-                print(
-                    f"Analyzing commit record for Commit ID: {commit_id}..."
-                )  # Print prompt message
-                completion = client.chat.completions.create(
-                    model="nvidia/llama-3.1-nemotron-70b-instruct",
-                    messages=[{"role": "user", "content": diff_prompt}],
-                    temperature=0.5,
-                    top_p=0.7,
-                    max_tokens=1024,
-                    stream=True,
-                )
-
-                # Collect the reply for each commit record
-                for chunk in completion:
-                    if chunk.choices[0].delta.content is not None:
-                        full_reply += chunk.choices[0].delta.content
-
-            print(full_reply)
-            end_time = time.time()  # Record end time
-            print(
-                f"Analysis completed, took {end_time - start_time:.2f} seconds"
-            )  # Print elapsed time
 
     def display_changes(self):
         # Count how many times each file was changed

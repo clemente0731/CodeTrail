@@ -27,7 +27,7 @@ else
 fi
 
 # get modified Python files (incremental formatting)
-modified_files=$(git diff --name-only --cached | grep '\.py$' || true)
+modified_files=$(git diff --name-only --diff-filter=M | grep '\.py$' || true)
 
 if [ -z "$modified_files" ]; then
     print_message "33" "no modified Python files found."
