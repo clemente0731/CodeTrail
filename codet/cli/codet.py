@@ -95,8 +95,8 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser(description='Analyze commit history of a Git repository')
-    parser.add_argument('--days', type=int, default=14, help='Number of days to look back for commits, defaults to 14 days')
-    
+    parser.add_argument('-d', '--days', type=int, default=7, help='Number of days to look back for commits, defaults to 14 days')
+    parser.add_argument('-k', '--keyword', type=str, help='Search for a keyword in the current commit diff')
     args = parser.parse_args()
     
     print(HELLO_CODET)
