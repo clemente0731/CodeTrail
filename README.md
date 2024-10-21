@@ -1,4 +1,3 @@
-```markdown
 # CodeTrail Codet
 
 ## Overview
