@@ -48,8 +48,8 @@ def main():
         "-m",
         "--model",
         type=str,
-        default="nvidia/llama-3.1-nemotron-70b-instruct",
-        help="Specify the model to use (default: nvidia/llama-3.1-nemotron-70b-instruct), please refer to https://build.nvidia.com/nim",
+        default="meta/llama-3.2-3b-instruct",
+        help="Specify the model to use (default: meta/llama-3.2-3b-instruct), please refer to https://build.nvidia.com/nim",
     )
     parser.add_argument(
         "-t",

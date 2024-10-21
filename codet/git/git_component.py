@@ -43,7 +43,7 @@ class GitAnalyzer:
                 parent_commit = commit.parents[0]
 
                 commit_summary = commit.message.splitlines()[0]
-                commit_hexsha = commit.hexsha
+                commit_hexsha = commit.hexsha[:7]
                 commit_date = commit.committed_datetime
                 commit_author = commit.author.name
                 commit_email = commit.author.email
@@ -54,10 +54,6 @@ class GitAnalyzer:
                     f"{commit_diff_count} files changed"  # 简化差异摘要
                 )
                 commit_diff_files = [diff.a_path for diff in commit_diffs]
-
-                print(
-                    f"{Fore.BLUE}Commit Summary: {commit_summary:<100} (Commit ID: {commit_hexsha}){Style.RESET_ALL}"
-                )
 
                 # this section gathers the diffs of the commit and checks for a keyword in the diffs.
                 diffs_txt = ""
@@ -73,9 +69,30 @@ class GitAnalyzer:
                 ###   commit records   ####
                 ###########################
                 # # Check if a keyword is provided for searching in the diffs
-                if self.keyword and self.keyword in diffs_txt:
+                if self.keyword:
+                    is_keyword_present = self.keyword and (
+                        self.keyword.lower() in diffs_txt.lower()
+                        or self.keyword.lower() in commit_message.lower()
+                    )
+                    if is_keyword_present:
+                        print(
+                            f"{Fore.BLUE}Commit Summary: {commit_summary:<100} (Commit ID: {commit_hexsha}) (Date: {commit_date}) {Style.RESET_ALL}"
+                        )
+                        self.commit_records[commit_hexsha] = {
+                            "commit_message": commit_message,
+                            "commit_date": commit_date,
+                            "commit_email": commit_email,
+                            "commit_diffs": diffs_txt.strip(),
+                        }
+                        for diff_item in commit_diffs:
+                            if diff_item.a_path:  # Ensure that the file path exists
+                                self.changed_files.append(
+                                    diff_item.a_path
+                                )  # Count changed files for hotspot analysis
+                                print(f"\t{diff_item.a_path}")
+                elif not self.keyword:
                     print(
-                        f"{Fore.RED} keyword '{self.keyword}' found in diff: {self.keyword}{Style.RESET_ALL}"
+                        f"{Fore.BLUE}Commit Summary: {commit_summary:<100} (Commit ID: {commit_hexsha}){Style.RESET_ALL}"
                     )
                     self.commit_records[commit_hexsha] = {
                         "commit_message": commit_message,
@@ -83,14 +100,11 @@ class GitAnalyzer:
                         "commit_email": commit_email,
                         "commit_diffs": diffs_txt.strip(),
                     }
-                elif not self.keyword:
-                    self.commit_records[commit_hexsha] = {
-                        "commit_message": commit_message,
-                        "commit_date": commit_date,
-                        "commit_email": commit_email,
-                        "commit_diffs": diffs_txt.strip(),
-                    }
-
+                    for diff_item in commit_diffs:
+                        if diff_item.a_path:  # Ensure that the file path exists
+                            self.changed_files.append(
+                                diff_item.a_path
+                            )  # Count changed files for hotspot analysis
                 ###########################
                 ###  debug && dump csv ####
                 ###########################
@@ -134,17 +148,6 @@ class GitAnalyzer:
                         print(
                             f"An error occurred while writing to 'commit_records.csv': {e}"
                         )
-
-            ###########################
-            ###  hotspot analysis  ####
-            ###########################
-            # Get the diffs without creating a patch
-            diffs = commit.diff(parent_commit, create_patch=False)
-            for diff_item in diffs:
-                if diff_item.a_path:  # Ensure that the file path exists
-                    self.changed_files.append(
-                        diff_item.a_path
-                    )  # Count changed files for hotspot analysis
 
     def display_changes(self):
         # Count how many times each file was changed
